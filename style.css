@@ -1,0 +1,45 @@
+body { background: #1a1a1a; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; user-select: none; }
+#game-wrapper { display: flex; flex-direction: row; min-height: 100vh; width: 100%; }
+#main-column { flex: 3; padding: 20px; text-align: center; border-right: 2px solid #333; }
+#side-column { flex: 1; padding: 20px; background: #252525; min-width: 250px; }
+
+#game-messages { background: rgba(0,0,0,0.8); color: #f1c40f; padding: 10px; position: fixed; top: 20px; right: 280px; border-radius: 5px; border-left: 4px solid #f1c40f; z-index: 1000; transition: 0.3s; pointer-events: none; opacity: 0; }
+
+#enemy { font-size: 80px; margin: 10px auto; cursor: pointer; transition: transform 0.05s; width: 100px; }
+#hp-bar-container { width: 300px; background: #444; height: 18px; margin: 10px auto; border-radius: 9px; overflow: hidden; border: 2px solid #000; }
+#hp-bar { width: 100%; background: #2ecc71; height: 100%; transition: width 0.1s; }
+
+#boss-timer-bg { width: 200px; background: #333; height: 10px; margin: 0 auto 15px; border-radius: 5px; border: 1px solid #ff4757; overflow: hidden; }
+#boss-timer-bar { width: 100%; background: #ff4757; height: 100%; transition: width 1s linear; }
+
+#units-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 15px; }
+.unit-card { background: #2c3e50; padding: 12px; border-radius: 10px; border: 2px solid #34495e; }
+
+.unit-equipment-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 10px 0; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; }
+.slot { width: 40px; height: 40px; background: #111; border: 1px solid #444; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; position: relative; }
+.slot.highlight { border-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+.slot.over { background: #444; border-color: white; }
+.slot::after { content: attr(data-type); position: absolute; font-size: 6px; bottom: 1px; color: #555; pointer-events: none; }
+
+#inventory-slots { display: flex; flex-wrap: wrap; gap: 8px; background: #111; padding: 15px; border-radius: 10px; min-height: 80px; border: 2px dashed #444; }
+.item { width: 45px; height: 45px; background: #222; border: 2px solid #444; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: grab; position: relative; overflow: visible; }
+
+/* Tooltip: kluczowe pointer-events: none zapobiega "pływaniu" obrazu dragu */
+.item-tooltip { visibility: hidden; position: absolute; bottom: 55px; background: #000; color: #fff; padding: 8px; font-size: 11px; border-radius: 4px; width: 140px; z-index: 100; border: 1px solid #555; text-align: left; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+.item:hover .item-tooltip { visibility: visible; opacity: 1; }
+
+.rarity-common { border-color: #bdc3c7; }
+.rarity-rare { border-color: #3498db; }
+.rarity-legendary { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; }
+
+#global-shop { display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; }
+#global-shop button { width: 80px; height: 60px; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; background: #3498db; color: white; border: none; cursor: pointer; }
+#global-shop button:disabled { opacity: 0.3; }
+
+.unit-progress-bg { width: 100%; background: #111; height: 6px; border-radius: 3px; margin: 8px 0; }
+.unit-progress-fill { width: 0%; background: #3498db; height: 100%; border-radius: 3px; }
+.unit-btns { display: flex; gap: 5px; }
+.unit-btns button { font-size: 10px; padding: 4px; background: #2980b9; color: white; border: none; border-radius: 3px; cursor: pointer; width: 100%; }
+
+#admin-panel-mini { position: absolute; top: 10px; left: 10px; opacity: 0.1; }
+#admin-panel-mini:hover { opacity: 1; }

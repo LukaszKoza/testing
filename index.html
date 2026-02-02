@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moja Gra RPG - Idle Clicker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <div id="main-column">
+            <div id="admin-panel-mini">
+                <input type="number" id="gold-input" placeholder="+ Gold">
+                <button onclick="addGold()">+</button>
+                <button onclick="resetGame()">R</button>
+            </div>
+
+            <div id="game-messages">Witaj w przygodzie!</div>
+
+            <div id="stats">
+                <h2>Biom: <span id="biome">Las</span></h2>
+                <p id="wave-info">Przeciwnik 1/10 (Fala 1)</p>
+                <p>Złoto: <b id="gold">0</b></p>
+            </div>
+
+            <div id="enemy-area">
+                <div id="boss-container" style="display: none;">
+                    <div id="boss-timer-label">CZAS BOSSA: <span id="timer-sec">30</span>s</div>
+                    <div id="boss-timer-bg"><div id="boss-timer-bar"></div></div>
+                </div>
+                <div id="enemy">👹</div>
+                <div id="hp-bar-container"><div id="hp-bar"></div></div>
+                <p id="hp-text">HP: 10/10</p>
+            </div>
+
+            <div id="global-shop">
+                <button id="buy-unit-btn" onclick="buyNewUnit()" title="Rekrutuj">🏠 <span id="unit-cost">50</span></button>
+                <button id="up-click-btn" onclick="upgradeClick()" title="Klik">⚔️ <span id="click-cost">10</span></button>
+                <button id="up-inv-btn" onclick="upgradeInventory()" title="Torba">🎒 <span id="inv-cost">100</span></button>
+            </div>
+
+            <h3>Twoja Armia</h3>
+            <div id="units-container"></div>
+
+            <h3>📦 Magazyn (<span id="inv-count">0</span>/<span id="inv-max">10</span>)</h3>
+            <div id="inventory-slots"></div>
+        </div>
+
+        <div id="side-column">
+            <h4>🏆 Osiągnięcia</h4>
+            <div id="achievements-list"></div>
+        </div>
+        
+        <div id="drag-ghost" style="position: absolute; top: -100px; padding: 10px; background: #222; border: 2px solid #f1c40f; border-radius: 5px; font-size: 24px; pointer-events: none;"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
