@@ -30,72 +30,73 @@ const itemPool = [
     { type: "amulet", name: "Amulet", icon: "🧿", speed: 1500, rarity: "legendary", chance: 0.02 }
 ];
 
+const achievements = [
+    { id: 'g1', title: "Zbieracz", desc: "Zdobądź 500 złota", check: () => totalGoldEarned >= 500, unlocked: false },
+    { id: 'u1', title: "Mała Armia", desc: "Miej 4 jednostki", check: () => unitsList.length >= 4, unlocked: false },
+    { id: 'b1', title: "Pogromca", desc: "Pokonaj pierwszego Bossa", check: () => currentWave >= 2, unlocked: false }
+];
+
 function showMsg(text) {
     const el = document.getElementById('game-messages');
-    el.innerText = text;
-    el.style.opacity = 1;
+    el.innerText = text; el.style.opacity = 1;
     setTimeout(() => { el.style.opacity = 0; }, 2000);
 }
 
-// --- SYSTEM PRZECIĄGANIA (Wersja v2 - Naprawiona graficznie) ---
+// --- TOOLTIP POSITIONING ---
+function positionTooltip(e) {
+    const tooltip = e.currentTarget.querySelector('.item-tooltip');
+    if (!tooltip) return;
+    
+    let x = e.clientX + 15;
+    let y = e.clientY - 40;
+
+    // Sprawdź czy nie wychodzi poza prawą krawędź
+    if (x + 160 > window.innerWidth) {
+        x = e.clientX - 160;
+    }
+    // Sprawdź czy nie wychodzi poza górę
+    if (y < 0) y = 10;
+
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+}
+
+// --- DRAG & DROP ---
 let draggedItemIdx = null;
 
 function handleDragStart(e, index) {
     draggedItemIdx = index;
     const item = inventory[index];
-    
-    // Tworzymy czysty obrazek pod kursorem (Ghost Image)
     const ghost = document.getElementById('drag-ghost');
     ghost.innerText = item.icon;
     e.dataTransfer.setDragImage(ghost, 25, 25);
-    e.dataTransfer.effectAllowed = "move";
-    
-    // Podświetlamy pasujące sloty
-    document.querySelectorAll(`.slot[data-type="${item.type}"]`).forEach(slot => {
-        slot.classList.add('highlight');
-    });
+    document.querySelectorAll(`.slot[data-type="${item.type}"]`).forEach(s => s.classList.add('highlight'));
 }
 
 function handleDragEnd() {
-    document.querySelectorAll('.slot').forEach(slot => {
-        slot.classList.remove('highlight', 'over');
-    });
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('highlight', 'over'));
     draggedItemIdx = null;
 }
 
 function handleDrop(e, unitIdx, slotType) {
     e.preventDefault();
     if (draggedItemIdx === null) return;
-
     const item = inventory[draggedItemIdx];
-    if (item.type !== slotType) {
-        showMsg("To nie ten slot!");
-        return;
+    if (item.type !== slotType || unitsList[unitIdx].equipment[slotType]) {
+        showMsg("Nie można założyć!"); return;
     }
-    if (unitsList[unitIdx].equipment[slotType]) {
-        showMsg("Slot zajęty!");
-        return;
-    }
-
     unitsList[unitIdx].equipment[slotType] = item;
     inventory.splice(draggedItemIdx, 1);
-    
-    renderUnits();
-    renderInventory();
-    updateUI();
-    showMsg("Założono: " + item.name);
+    renderUnits(); renderInventory(); updateUI();
 }
 
-// --- LOGIKA WALKI ---
+// --- LOGIKA GRY ---
 function defeatEnemy() {
     clearInterval(bossTimerInterval);
     document.getElementById('boss-container').style.display = 'none';
-    let reward = Math.floor(maxEnemyHP / 2);
-    if (isBoss) reward *= 5;
+    let reward = Math.floor(maxEnemyHP / 2) * (isBoss ? 5 : 1);
     gold += reward; totalGoldEarned += reward;
-
     rollLoot(isBoss ? 3 : 1);
-
     if (isBoss) {
         isBoss = false; currentWave++; enemyInWave = 1; maxEnemyHP = Math.floor(maxEnemyHP * 2.2);
         if (currentWave > 10) changeBiome();
@@ -103,64 +104,43 @@ function defeatEnemy() {
         enemyInWave++; if (enemyInWave > 10) startBossFight();
     }
     currentEnemyHP = maxEnemyHP;
-    updateUI();
+    checkAchievements(); updateUI();
+}
+
+function changeBiome() {
+    currentWave = 1;
+    const b = ["Las", "Jaskinia", "Wulkan", "Otchłań"];
+    currentBiome = b[(b.indexOf(currentBiome) + 1) % b.length];
 }
 
 function rollLoot(multi) {
-    itemPool.forEach(baseItem => {
-        if (Math.random() < (baseItem.chance * multi)) {
-            if (inventory.length < maxInvSlots) {
-                inventory.push({ ...baseItem, id: Date.now() + Math.random() });
-                showMsg("Znaleziono: " + baseItem.name);
-            } else {
-                showMsg("Magazyn pełny!");
-            }
+    itemPool.forEach(it => {
+        if (Math.random() < (it.chance * multi) && inventory.length < maxInvSlots) {
+            inventory.push({ ...it, id: Date.now() + Math.random() });
+            showMsg("Znalazłeś: " + it.name);
         }
     });
     renderInventory();
 }
 
-function changeBiome() {
-    currentWave = 1;
-    const biomes = ["Las", "Jaskinia", "Wulkan", "Otchłań"];
-    currentBiome = biomes[(biomes.indexOf(currentBiome) + 1) % biomes.length];
-}
-
-// --- SKLEP I ULEPSZENIA ---
+// --- SKLEP ---
 function buyNewUnit() {
     if (gold >= unitBaseCost && unitsList.length < 8) {
         gold -= unitBaseCost;
         unitsList.push({ power: 5, speed: 5000, progress: 0, pCost: 30, sCost: 50, equipment: {} });
         unitBaseCost = Math.floor(unitBaseCost * 2.5);
-        renderUnits(); updateUI();
-    } else showMsg("Brak złota lub miejsca!");
+        renderUnits(); checkAchievements(); updateUI();
+    }
 }
 
 function upgradeInventory() {
     if (gold >= invUpgradeCost) {
         gold -= invUpgradeCost; maxInvSlots += 5; invUpgradeCost *= 3;
         renderInventory(); updateUI();
-        showMsg("Powiększono magazyn!");
     }
 }
 
-function upgradeUnitPower(idx) {
-    if (gold >= unitsList[idx].pCost) {
-        gold -= unitsList[idx].pCost; unitsList[idx].power += 5;
-        unitsList[idx].pCost = Math.floor(unitsList[idx].pCost * 1.8);
-        renderUnits(); updateUI();
-    }
-}
-
-function upgradeUnitSpeed(idx) {
-    if (gold >= unitsList[idx].sCost && unitsList[idx].speed > 1000) {
-        gold -= unitsList[idx].sCost; unitsList[idx].speed -= 400;
-        unitsList[idx].sCost = Math.floor(unitsList[idx].sCost * 2.2);
-        renderUnits(); updateUI();
-    }
-}
-
-// --- RENDERING ---
+// --- RENDEROWANIE ---
 function renderInventory() {
     const cont = document.getElementById('inventory-slots');
     cont.innerHTML = '';
@@ -173,6 +153,7 @@ function renderInventory() {
         
         div.addEventListener('dragstart', (e) => handleDragStart(e, idx));
         div.addEventListener('dragend', handleDragEnd);
+        div.addEventListener('mousemove', positionTooltip); // Dynamiczna pozycja
         cont.appendChild(div);
     });
     document.getElementById('inv-count').innerText = inventory.length;
@@ -184,7 +165,7 @@ function renderUnits() {
     cont.innerHTML = '';
     unitsList.forEach((u, i) => {
         let tP = u.power; let sB = 0;
-        Object.values(u.equipment).forEach(it => { if(it.power) tP += it.power; if(it.speed) sB += it.speed; });
+        Object.values(u.equipment).forEach(it => { tP += it.power || 0; sB += it.speed || 0; });
         let cS = Math.max(500, u.speed - sB);
 
         const card = document.createElement('div');
@@ -209,21 +190,59 @@ function renderUnits() {
     });
 }
 
-// --- PĘTLA GŁÓWNA ---
-setInterval(() => {
-    unitsList.forEach((u, i) => {
-        let sB = 0; Object.values(u.equipment).forEach(it => { if(it.speed) sB += it.speed; });
-        let sp = Math.max(500, u.speed - sB);
-        u.progress += 100;
-        if (u.progress >= sp) {
-            u.progress = 0;
-            let p = u.power; Object.values(u.equipment).forEach(it => { if(it.power) p += it.power; });
-            dealDamage(p);
-        }
-        let f = document.getElementById(`fill-${i}`);
-        if (f) f.style.width = (u.progress / sp * 100) + "%";
+function renderAchievements() {
+    const cont = document.getElementById('achievements-list');
+    cont.innerHTML = '';
+    achievements.forEach(a => {
+        const div = document.createElement('div');
+        div.className = `achievement ${a.unlocked ? 'unlocked' : ''}`;
+        div.innerHTML = `<span>${a.unlocked ? '✅' : '🔒'} ${a.title}</span><br><small>${a.desc}</small>`;
+        cont.appendChild(div);
     });
-}, 100);
+}
+
+function checkAchievements() {
+    achievements.forEach(a => {
+        if (!a.unlocked && a.check()) {
+            a.unlocked = true; showMsg("Osiągnięcie: " + a.title);
+        }
+    });
+    renderAchievements();
+}
+
+// --- SYSTEMY POMOCNICZE ---
+function upgradeUnitPower(idx) {
+    if (gold >= unitsList[idx].pCost) {
+        gold -= unitsList[idx].pCost; unitsList[idx].power += 5;
+        unitsList[idx].pCost = Math.floor(unitsList[idx].pCost * 1.8);
+        renderUnits(); updateUI();
+    }
+}
+
+function upgradeUnitSpeed(idx) {
+    if (gold >= unitsList[idx].sCost && unitsList[idx].speed > 1000) {
+        gold -= unitsList[idx].sCost; unitsList[idx].speed -= 400;
+        unitsList[idx].sCost = Math.floor(unitsList[idx].sCost * 2.2);
+        renderUnits(); updateUI();
+    }
+}
+
+function upgradeClick() {
+    if (gold >= clickUpgradeCost) {
+        gold -= clickUpgradeCost; clickPower += 4; clickUpgradeCost = Math.floor(clickUpgradeCost * 2.3);
+        updateUI();
+    }
+}
+
+function startBossFight() {
+    isBoss = true; timeLeft = 30; maxEnemyHP *= 3.5; currentEnemyHP = maxEnemyHP;
+    document.getElementById('boss-container').style.display = 'block';
+    bossTimerInterval = setInterval(() => {
+        timeLeft--; document.getElementById('timer-sec').innerText = timeLeft;
+        document.getElementById('boss-timer-bar').style.width = (timeLeft/30*100) + "%";
+        if (timeLeft <= 0) { clearInterval(bossTimerInterval); isBoss = false; enemyInWave = 1; updateUI(); }
+    }, 1000);
+}
 
 function updateUI() {
     document.getElementById('gold').innerText = Math.floor(gold);
@@ -236,45 +255,29 @@ function updateUI() {
     let hpPerc = (currentEnemyHP / maxEnemyHP) * 100;
     document.getElementById('hp-bar').style.width = Math.max(0, hpPerc) + "%";
     document.getElementById('hp-text').innerText = `HP: ${Math.ceil(currentEnemyHP)} / ${maxEnemyHP}`;
-    document.querySelectorAll('button').forEach(btn => {
-        let costMatch = btn.innerText.match(/\d+/);
-        let cost = costMatch ? parseInt(costMatch[0]) : (btn.querySelector('span') ? parseInt(btn.querySelector('span').innerText) : null);
-        if (cost) btn.disabled = gold < cost;
+}
+
+setInterval(() => {
+    unitsList.forEach((u, i) => {
+        let sB = 0; Object.values(u.equipment).forEach(it => sB += it.speed || 0);
+        let sp = Math.max(500, u.speed - sB);
+        u.progress += 100;
+        if (u.progress >= sp) {
+            u.progress = 0;
+            let p = u.power; Object.values(u.equipment).forEach(it => p += it.power || 0);
+            currentEnemyHP -= p; if (currentEnemyHP <= 0) defeatEnemy(); updateUI();
+        }
+        let f = document.getElementById(`fill-${i}`);
+        if (f) f.style.width = (u.progress / sp * 100) + "%";
     });
-}
+}, 100);
 
-function upgradeClick() {
-    if (gold >= clickUpgradeCost) {
-        gold -= clickUpgradeCost; clickPower += 4; clickUpgradeCost = Math.floor(clickUpgradeCost * 2.3);
-        updateUI(); showMsg("Zwiększono siłę kliknięcia!");
-    }
-}
-
-function startBossFight() {
-    isBoss = true; timeLeft = 30; maxEnemyHP *= 3.5; currentEnemyHP = maxEnemyHP;
-    document.getElementById('boss-container').style.display = 'block';
-    bossTimerInterval = setInterval(() => {
-        timeLeft--; document.getElementById('timer-sec').innerText = timeLeft;
-        document.getElementById('boss-timer-bar').style.width = (timeLeft/30*100) + "%";
-        if (timeLeft <= 0) { clearInterval(bossTimerInterval); isBoss = false; enemyInWave = 1; updateUI(); showMsg("Porażka!"); }
-    }, 1000);
-}
-
-function dealDamage(a) { currentEnemyHP -= a; if (currentEnemyHP <= 0) defeatEnemy(); updateUI(); }
-function addGold() { gold += parseInt(document.getElementById('gold-input').value || 0); updateUI(); }
-
-// NAPRAWA BŁĘDU CODEPEN (location.reload zamiast usuwania)
-function resetGame() { 
-    if(confirm("Czy na pewno chcesz zresetować postęp?")) {
-        window.history.go(0); // Alternatywa dla location.reload() bezpieczna w CodePen
-    } 
-}
+function addGold() { gold += parseInt(document.getElementById('gold-input').value || 0); totalGoldEarned += gold; updateUI(); checkAchievements(); }
+function resetGame() { if(confirm("Zresetować?")) window.history.go(0); }
 
 window.onload = () => {
     document.getElementById('enemy').onclick = () => {
-        dealDamage(clickPower);
-        document.getElementById('enemy').style.transform = "scale(0.8)";
-        setTimeout(() => document.getElementById('enemy').style.transform = "scale(1)", 50);
+        currentEnemyHP -= clickPower; if (currentEnemyHP <= 0) defeatEnemy(); updateUI();
     };
-    updateUI();
+    renderAchievements(); updateUI();
 };
